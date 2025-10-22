@@ -14,6 +14,7 @@ TRAIN_VAL_SPLIT = 0.9
 EVAL_ITERS = 300
 PRINT_INTERVAL = 50
 MAX_NEW_TOKENS = 500
+n_embd = 32
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -68,12 +69,17 @@ def estimate_loss():
 # Bigram Model
 class BigramLanguageModel(nn.Module):
 
-  def __init__(self, vocab_size):
+  def __init__(self):
     super().__init__()
-    self.token_embedding_table = nn.Embedding(vocab_size, vocab_size)
-
+    self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
+    self.positional_embedding_table = nn.Embedding(BLOCK_SIZE, n_embd)
+    self.lhead = nn.Linear(n_embd, vocab_size)
+    
+  
   def forward(self, idx, targets=None):
-    logits = self.token_embedding_table(idx) # (B,T,C)
+    tok_emb = self.token_embedding_table(idx) # (B,T,C)
+    pos_emb = self.positional_embedding_table(torch.arange(T, device=device)) # (T,C)
+    logits = self.lhead(tok_emb + pos_emb) # (B,T,vocab_size)
 
     if targets == None:
       loss = None
@@ -93,7 +99,7 @@ class BigramLanguageModel(nn.Module):
       idx = torch.cat((idx, idx_next), dim=1)
     return idx
 
-model = BigramLanguageModel(vocab_size)
+model = BigramLanguageModel()
 m = model.to(device)
 
 # Optimizer
